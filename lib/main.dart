@@ -33,9 +33,10 @@ void main() async {
         ChangeNotifierProvider(
           create: (context) => AppConfigProvider(),
         ),
-        ChangeNotifierProvider(create: (context) => UserProvider()),
+        ChangeNotifierProvider(
+            create: (context) => UserProvider()),
       ],
-      child: const MyApp(),
+      child: MyApp(),
     ),
   );
 }
