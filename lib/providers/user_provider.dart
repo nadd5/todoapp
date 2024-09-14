@@ -1,22 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:todoappp/model/my_user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:todoappp/model/my_user.dart';
 
 class UserProvider extends ChangeNotifier {
   MyUser? currentUser;
+  SharedPreferences? sharedPreferences;
 
-  void updateUser(MyUser newUser) {
+  UserProvider() {
+    loadUserData();
+  }
+
+  Future<void> loadUserData() async {
+    sharedPreferences = await SharedPreferences.getInstance();
+    String? savedEmail = sharedPreferences?.getString("userEmail");
+    if (savedEmail != null) {
+      currentUser = MyUser(id: "placeholderId", name: "placeholderName", email: savedEmail);
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateUser(MyUser newUser) async {
     currentUser = newUser;
+    sharedPreferences = await SharedPreferences.getInstance();
+    await sharedPreferences?.setString("userEmail", newUser.email);
     notifyListeners();
   }
 
-  Future<void> saveEmail(String email) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_email', email);
+  Future<void> clearUserData() async {
+    sharedPreferences = await SharedPreferences.getInstance();
+    await sharedPreferences?.remove("userEmail");
+    currentUser = null;
+    notifyListeners();
   }
 
-  Future<String?> loadEmail() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('user_email');
+  String? getUserEmail() {
+    return currentUser?.email;
   }
 }

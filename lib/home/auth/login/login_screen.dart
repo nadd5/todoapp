@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '/appcolor.dart';
 import '/dialog_utils.dart';
 import '/firebase_utils.dart';
@@ -11,12 +10,11 @@ import '/home/home_screen.dart';
 import '/providers/user_provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-// ignore: must_be_immutable
 class LoginScreen extends StatefulWidget {
   static const String routeName = 'Login_screen';
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  _LoginScreenState createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
@@ -28,12 +26,13 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    loadEmail();
+    userProvider = Provider.of<UserProvider>(context, listen: false);
+    // Load saved email from SharedPreferences
+    loadSavedEmail();
   }
 
-  void loadEmail() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? savedEmail = prefs.getString('user_email');
+  void loadSavedEmail() {
+    String? savedEmail = userProvider.getUserEmail();
     if (savedEmail != null) {
       emailController.text = savedEmail;
     }
@@ -76,8 +75,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         return AppLocalizations.of(context)!.ee;
                       }
                       final bool emailValid = RegExp(
-                          r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$')
-                          .hasMatch(text);
+                        r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$',
+                      ).hasMatch(text);
                       if (!emailValid) {
                         return AppLocalizations.of(context)!.ee;
                       }
@@ -108,15 +107,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: appcolor.primarycolor,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 50, vertical: 20),
+                        padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
                       ),
                       child: Text(
                         AppLocalizations.of(context)!.login,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyLarge
-                            ?.copyWith(color: appcolor.whitecolor),
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: appcolor.whitecolor),
                       ),
                     ),
                   ),
@@ -124,15 +119,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     padding: const EdgeInsets.all(15),
                     child: TextButton(
                       onPressed: () {
-                        Navigator.of(context)
-                            .pushNamed(RegisterScreen.routeName);
+                        Navigator.of(context).pushNamed(RegisterScreen.routeName);
                       },
                       child: Text(
                         AppLocalizations.of(context)!.su,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: appcolor.primarycolor,
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -162,18 +153,12 @@ class _LoginScreenState extends State<LoginScreen> {
           password: passController.text,
         );
 
-        var user = await FirebaseUtils.readUserFromFireStore(
-            credential.user?.uid ?? '');
+        var user = await FirebaseUtils.readUserFromFireStore(credential.user?.uid ?? '');
         if (user == null) {
           return;
         }
+        userProvider.updateUser(user); // Save the user email in SharedPreferences
 
-        // Save email in SharedPreferences
-        userProvider.saveEmail(emailController.text);
-
-        Navigator.of(context).pushReplacementNamed(HomeScreen.routeName);
-
-        userProvider.updateUser(user);
         DialogUtils.hideLoading(context);
         DialogUtils.showMessage(
           context: context,
@@ -183,14 +168,6 @@ class _LoginScreenState extends State<LoginScreen> {
           posAction: () {
             Navigator.of(context).pushReplacementNamed(HomeScreen.routeName);
           },
-        );
-      } on FirebaseAuthException catch (e) {
-        DialogUtils.hideLoading(context);
-        DialogUtils.showMessage(
-          context: context,
-          contents: e.message ?? "Unknown error",
-          title: 'Error',
-          posActionName: AppLocalizations.of(context)!.ok,
         );
       } catch (e) {
         DialogUtils.hideLoading(context);
